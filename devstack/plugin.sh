@@ -47,6 +47,34 @@ KIBANA_SERVER_BASE_PATH=${KIBANA_SERVER_BASE_PATH:-"/dashboard/monitoring/logs_p
 PLUGIN_FILES=$MONASCA_EVENTS_API_DIR/devstack/files
 
 
+function install_node_nvm {
+    set -i
+    if [[ ! -f "${HOME}/.nvm/nvm.sh" ]] && is_service_enabled kibana; then
+        # note(trebskit) we need node to build kibana plugin
+        # so if kibana is enabled in this environment, let's install node
+        echo_summary "Install Node ${NODE_JS_VERSION} with NVM ${NVM_VERSION}"
+        local nvmUrl=https://raw.githubusercontent.com/creationix/nvm/v${NVM_VERSION}/install.sh
+
+        local nvmDest
+        nvmDest=`get_extra_file ${nvmUrl}`
+
+        bash ${nvmDest}
+    fi
+    if is_service_enabled kibana; then
+        # refresh installation
+        (
+            source "${HOME}"/.nvm/nvm.sh >> /dev/null; \
+            nvm install ${NODE_JS_VERSION}; \
+            nvm use ${NODE_JS_VERSION}; \
+            npm config set registry "http://registry.npmjs.org/"; \
+            npm config set proxy "${HTTP_PROXY}"; \
+            npm set strict-ssl false;
+        )
+    fi
+    set +i
+}
+
+
 function install_kibana {
     if is_service_enabled kibana; then
         echo_summary "Installing Kibana ${KIBANA_VERSION}"
@@ -87,6 +115,56 @@ function configure_kibana {
     fi
 }
 
+function install_kibana_plugin {
+    if is_service_enabled kibana; then
+        echo_summary "Install Kibana plugin"
+
+        # note(trebskit) that needs to happen after kibana received
+        # its configuration otherwise the plugin fails to be installed
+
+        local pkg=file://$DEST/monasca-kibana-plugin.tar.gz
+
+        $KIBANA_DIR/bin/kibana plugin -r monasca-kibana-plugin
+        $KIBANA_DIR/bin/kibana plugin -i monasca-kibana-plugin -u $pkg
+    fi
+}
+
+function build_kibana_plugin {
+    if is_service_enabled kibana; then
+        echo "Building Kibana plugin"
+
+        git_clone $MONASCA_KIBANA_PLUGIN_REPO $MONASCA_KIBANA_PLUGIN_DIR \
+            $MONASCA_KIBANA_PLUGIN_BRANCH
+
+        pushd $MONASCA_KIBANA_PLUGIN_DIR
+
+        local monasca_kibana_plugin_version
+        monasca_kibana_plugin_version="$(python -c 'import json; \
+            obj = json.load(open("package.json")); print obj["version"]')"
+
+        set -i
+        (source "${HOME}"/.nvm/nvm.sh >> /dev/null; nvm use ${NODE_JS_VERSION}; npm install)
+        (source "${HOME}"/.nvm/nvm.sh >> /dev/null; nvm use ${NODE_JS_VERSION}; npm run package)
+        set +i
+
+        local pkg=$MONASCA_KIBANA_PLUGIN_DIR/target/monasca-kibana-plugin-${monasca_kibana_plugin_version}.tar.gz
+        local easyPkg=$DEST/monasca-kibana-plugin.tar.gz
+
+        ln -sf $pkg $easyPkg
+
+        popd
+    fi
+}
+
+function start_kibana {
+    if is_service_enabled kibana; then
+        echo_summary "Starting Kibana ${KIBANA_VERSION}"
+        local kibanaSleepTime=${KIBANA_SLEEP_TIME:-90}     # kibana takes some time to load up
+        local kibanaCFG="$KIBANA_CFG_DIR/kibana.yml"
+        run_process_sleep "kibana" "$KIBANA_DIR/bin/kibana --config $kibanaCFG" $kibanaSleepTime
+    fi
+}
+
 function install_gate_config_holder {
     sudo install -d -o $STACK_USER $GATE_CONFIGURATION_DIR
 }
@@ -99,11 +177,13 @@ function pre_install_monasca_events {
     install_kafka
     install_elasticsearch
     install_kibana
+    install_node_nvm
     install_gate_config_holder
 }
 
 function install_monasca_events {
     echo_summary "Installing Core Monasca Events Components"
+    build_kibana_plugin
     install_events_persister
     install_events_api
     install_events_agent
@@ -115,6 +195,7 @@ function configure_monasca_events {
     configure_kafka
     configure_elasticsearch
     configure_kibana
+    install_kibana_plugin
 
     echo_summary "Configuring Monasca Events Core Components"
     configure_log_dir ${MONASCA_EVENTS_LOG_DIR}
@@ -128,6 +209,7 @@ function init_monasca_events {
     start_zookeeper
     start_kafka
     start_elasticsearch
+    start_kibana
     # wait for all services to start
     sleep 10s
     create_kafka_topic monevents

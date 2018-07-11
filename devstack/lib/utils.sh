@@ -18,6 +18,14 @@
 _XTRACE_UTILS=$(set +o | grep xtrace)
 set +o xtrace
 
+run_process_sleep() {
+    local name=$1
+    local cmd=$2
+    local sleepTime=${3:-1}
+    run_process "$name" "$cmd"
+    sleep ${sleepTime}
+}
+
 function find_nearest_apache_mirror {
     if [ -z $APACHE_MIRROR ]; then
         local mirror;
