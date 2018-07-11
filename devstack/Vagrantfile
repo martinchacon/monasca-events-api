@@ -81,7 +81,7 @@ LOG_COLOR=False
 disable_all_services
 enable_service rabbit mysql key tempest horizon
 
-MONASCA_EVENTS_API_REPO=https://github.com/martinchacon/monasca-events-api.git}
+MONASCA_EVENTS_API_REPO=https://github.com/martinchacon/monasca-events-api.git
 MONASCA_EVENTS_API_BRANCH=adding-kibana
 
 enable_plugin monasca-events-api https://git.openstack.org/openstack/monasca-events-api
