@@ -87,6 +87,10 @@ function configure_kibana {
     fi
 }
 
+function install_gate_config_holder {
+    sudo install -d -o $STACK_USER $GATE_CONFIGURATION_DIR
+}
+
 function pre_install_monasca_events {
     echo_summary "Pre-Installing Monasca Events Dependency Components"
 
@@ -95,6 +99,7 @@ function pre_install_monasca_events {
     install_kafka
     install_elasticsearch
     install_kibana
+    install_gate_config_holder
 }
 
 function install_monasca_events {
