@@ -46,6 +46,20 @@ KIBANA_SERVICE_PORT=${KIBANA_SERVICE_PORT:-5601}
 KIBANA_SERVER_BASE_PATH=${KIBANA_SERVER_BASE_PATH:-"/dashboard/monitoring/logs_proxy"}
 PLUGIN_FILES=$MONASCA_EVENTS_API_DIR/devstack/files
 
+function enable_log_management {
+    if is_service_enabled horizon && is_service_enabled kibana; then
+        echo_summary "Configure Horizon with Kibana access"
+
+        local localSettings=${DEST}/horizon/monitoring/config/local_settings.py
+
+        sudo sed -e "
+            s|ENABLE_KIBANA_BUTTON = getattr(settings, 'ENABLE_KIBANA_BUTTON', False)|ENABLE_KIBANA_BUTTON = getattr(settings, 'ENABLE_KIBANA_BUTTON', True)|g;
+            s|KIBANA_HOST = getattr(settings, 'KIBANA_HOST', 'http://192.168.10.4:5601/')|KIBANA_HOST = getattr(settings, 'KIBANA_HOST', 'http://${KIBANA_SERVICE_HOST}:${KIBANA_SERVICE_PORT}/')|g;
+        " -i ${localSettings}
+
+        restart_apache_server
+    fi
+}
 
 function install_node_nvm {
     set -i
@@ -205,6 +219,7 @@ function configure_monasca_events {
 }
 
 function init_monasca_events {
+    enable_log_management
     echo_summary "Initializing Monasca Events Components"
     start_zookeeper
     start_kafka
