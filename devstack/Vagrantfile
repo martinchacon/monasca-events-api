@@ -81,7 +81,7 @@ LOG_COLOR=False
 disable_all_services
 enable_service rabbit mysql key tempest horizon
 
-enable_plugin monasca-api https://git.openstack.org/openstack/monasca-api
+enable_plugin monasca-api https://github.com/martinchacon/monasca-api
 enable_plugin monasca-events-api https://github.com/martinchacon/monasca-events-api adding-kibana
 
 ' > local.conf
