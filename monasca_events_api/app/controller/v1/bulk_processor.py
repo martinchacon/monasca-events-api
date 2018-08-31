@@ -30,7 +30,7 @@ class EventsBulkProcessor(events_publisher.EventPublisher):
 
     """
 
-    def send_message(self, events):
+    def send_message(self, events, event_tenant_id=None):
         """Sends bulk package to kafka
 
         :param list events: received events

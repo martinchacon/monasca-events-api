@@ -36,6 +36,7 @@ class Request(falcon.Request):
         self.context = \
             request_contex.RequestContext.from_environ(self.env)
         self.is_admin = policy.check_is_admin(self.context)
+        self.project_id = self.context.project_id
 
     def can(self, action, target=None):
         return self.context.can(action, target)

@@ -113,7 +113,7 @@ class EventPublisher(object):
         msg_json = rest_utils.as_json(message)
         return msg_json.encode('utf-8')
 
-    def _create_message_for_persister_from_request_body(self, body):
+    def _pepepecreate_message_for_persister_from_request_body(self, body):
         """Create message for persister from request body
 
         Method take original request body and them

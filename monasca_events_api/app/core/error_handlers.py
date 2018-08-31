@@ -25,5 +25,5 @@ def events_envelope_exception_handlet(ex, req, resp, params):
 
 
 def register_error_handler(app):
-    app.add_error_handler(envelope.EventsEnvelopeException,
+    app.add_error_handler(envelope.EventEnvelopeException,
                           events_envelope_exception_handlet)
