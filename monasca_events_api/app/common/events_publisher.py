@@ -13,6 +13,7 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
+import six
 import falcon
 from monasca_common.kafka import producer
 from monasca_common.kafka_lib.common import FailedPayloadsError
@@ -29,6 +30,27 @@ CONF = conf.CONF
 _RETRY_AFTER = 60
 _KAFKA_META_DATA_SIZE = 32
 _TRUNCATION_SAFE_OFFSET = 1
+
+def serializarlo(envelope):
+    """Returns json representation of an envelope.
+
+    :return: json object of envelope
+    :rtype: six.text_type
+
+    """
+    LOG.info('\n------>> tipo {0} \nenvelope {1}\n'.format(type(envelope), envelope))
+    json = rest_utils.as_json(envelope, ensure_ascii=True)
+
+    LOG.info('\n------>> tipo {0} \njson {1}\n'.format(type(json), json))
+
+    if six.PY2:
+        raw = unicode(json.replace(r'\"', r'"'), encoding='utf-8',
+                      errors='replace')
+    else:
+        raw = json
+
+    LOG.info('\n------>> tipo {0} \nraw {1}\n'.format(type(raw), raw))
+    return raw
 
 
 class InvalidMessageException(Exception):
@@ -139,7 +161,8 @@ class EventPublisher(object):
 
     def _truncate(self, envelope):
         # TODO description
-        return rest_utils.as_json(envelope)
+        msg_str = serializarlo(envelope)
+        return msg_str
         
           
 

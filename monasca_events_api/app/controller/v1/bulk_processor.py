@@ -69,10 +69,11 @@ class EventsBulkProcessor(events_publisher.EventPublisher):
 
     def _transform_message(self, event_element, *args):
         try:
-            LOG.info('###### event_element {0}, args {1}'.format(event_element, args))
+            LOG.info('\n###### tipo {0} \nevent_element {1}, \nargs {2}\n'.format(type(event_element), event_element, args))
             msg_json = rest_utils.as_json(event_element)
+            LOG.info('\n###### tipo {0} \nmsg_json {1}, \nargs {2}\n'.format(type(msg_json), msg_json, args))
             msg_json = msg_json.encode('utf-8')
-            
+            LOG.info('\n###### tipo {0} \nmsg_json {1}, \nargs {2}\n'.format(type(msg_json), msg_json, args))
             
             # TODO Validation
             event_envelope = envelope.Envelope.new_envelope(
