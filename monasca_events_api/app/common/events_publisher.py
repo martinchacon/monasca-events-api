@@ -17,6 +17,7 @@ import falcon
 from monasca_common.kafka import producer
 from monasca_common.kafka_lib.common import FailedPayloadsError
 from monasca_common.rest import utils as rest_utils
+from monasca_events_api.app.model import envelope
 from oslo_log import log
 
 from monasca_events_api import conf
@@ -86,7 +87,7 @@ class EventPublisher(object):
 
         for message in messages:
             try:
-                msg = self._transform_message_to_json(message)
+                msg = self._transform_message(message)
                 send_messages.append(msg)
             except Exception as ex:
                 LOG.exception(
@@ -102,7 +103,7 @@ class EventPublisher(object):
         finally:
             self._check_if_all_messages_was_publish(sent_counter, num_of_msgs)
 
-    def _transform_message_to_json(self, message):
+    def _transform_message(self, message):
         """Transforms message into JSON.
 
         Method transforms message to JSON and
@@ -111,8 +112,13 @@ class EventPublisher(object):
         :return: serialized message
         :rtype: str
         """
-        msg_json = rest_utils.as_json(message)
-        return msg_json.encode('utf-8')
+        if not self._is_message_valid(message):
+            raise InvalidMessageException()
+        #msg_json = rest_utils.as_json(message)
+        #return msg_json.encode('utf-8')
+        truncated = self._truncate(message)
+        proper = self._ensure_type_bytes(truncated)
+        return proper
 
     def _create_message_for_persister_from_request_body(self, body):
         """Create message for persister from request body
@@ -131,14 +137,20 @@ class EventPublisher(object):
             final_body.append(ev)
         return final_body
 
+    def _truncate(self, envelope):
+        # TODO description
+        return rest_utils.as_json(envelope)
+        
+          
+
     def _ensure_type_bytes(self, message):
         """Ensures that message will have proper type.
 
         :param str message: instance of message
 
         """
-
-        return message.encode('utf-8')
+        return message
+        #return message.encode('utf-8')
 
     def _publish(self, messages):
         """Publishes messages to kafka.
@@ -175,6 +187,12 @@ class EventPublisher(object):
                 LOG.error('Failed to send messages %s', ex)
                 raise falcon.HTTPServiceUnavailable('Service unavailable',
                                                     str(ex), 60)
+
+
+    @staticmethod
+    def _is_message_valid(message):
+        # TODO description
+        return message and isinstance(message, envelope.Envelope)
 
     def _check_if_all_messages_was_publish(self, send_count, to_send_count):
         """Executed after publishing to sent metrics.

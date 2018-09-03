@@ -14,7 +14,9 @@
 
 from oslo_log import log
 
+from monasca_common.rest import utils as rest_utils
 from monasca_events_api.app.common import events_publisher
+from monasca_events_api.app.model import envelope
 from monasca_events_api import conf
 
 LOG = log.getLogger(__name__)
@@ -30,7 +32,7 @@ class EventsBulkProcessor(events_publisher.EventPublisher):
 
     """
 
-    def send_message(self, events):
+    def send_message(self, events, event_tenant_id=None):
         """Sends bulk package to kafka
 
         :param list events: received events
@@ -45,7 +47,8 @@ class EventsBulkProcessor(events_publisher.EventPublisher):
 
         for ev_el in events:
             try:
-                t_el = self._transform_message_to_json(ev_el)
+                #ev_el = rest_utils.as_json(ev_el).encode('utf-8')
+                t_el = self._transform_message(ev_el, event_tenant_id)
                 if t_el:
                     to_send_msgs.append(t_el)
             except Exception as ex:
@@ -62,3 +65,31 @@ class EventsBulkProcessor(events_publisher.EventPublisher):
             raise ex
         finally:
             self._check_if_all_messages_was_publish(num_of_msgs, sent_count)
+
+
+    def _transform_message(self, event_element, *args):
+        try:
+            LOG.info('###### event_element {0}, args {1}'.format(event_element, args))
+            msg_json = rest_utils.as_json(event_element)
+            msg_json = msg_json.encode('utf-8')
+            
+            
+            # TODO Validation
+            event_envelope = envelope.Envelope.new_envelope(
+                #event=msg_json.enconde('utf-8'),
+                event=msg_json,
+                tenant_id=args[0],
+                #region=self.service_region,
+                #dimensions=self._get_dimensions(event_element,
+                #                                global_dims=args[0])
+                dimensions=None
+            )
+
+            msg_payload = (super(EventsBulkProcessor, self)
+                           ._transform_message(event_envelope))
+            return msg_payload
+
+        except Exception as ex:
+            LOG.error("Event transformation failed, rejecting event")
+            LOG.exception(ex)
+            return None
