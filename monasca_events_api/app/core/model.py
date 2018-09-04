@@ -24,5 +24,6 @@ def prepare_message_to_sent(body):
     for events in body['events']:
         ev = events['event'].copy()
         ev.update({'timestamp': timestamp})
+        ev.update({'dimensions': events.get('dimensions')})
         final_body.append(ev)
     return final_body

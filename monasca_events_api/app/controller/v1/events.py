@@ -52,11 +52,8 @@ class Events(object):
 
         try:
             request_body = helpers.read_json_msg_body(req)
-            LOG.info("++++++ ++++++ vars(req): {0} ++++++ ++++++".format(vars(req)))
-            LOG.info("++++++ ++++++ el tenant_id {0} ++++++ ++++++".format(req.project_id))
             req.can(policy_action)
             tenant_id = req.project_id
-            LOG.info("++++++ ++++++ vars(req): {0} ++++++ ++++++".format(vars(req)))
             body_validation.validate_body(request_body)
             messages = prepare_message_to_sent(request_body)
             self._processor.send_message(messages, event_tenant_id=tenant_id)

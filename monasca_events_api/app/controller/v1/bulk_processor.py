@@ -1,4 +1,4 @@
-# Copyright 2017 FUJITSU LIMITED
+# Copyright 2018 FUJITSU LIMITED
 #
 # Licensed under the Apache License, Version 2.0 (the "License"); you may
 # not use this file except in compliance with the License. You may obtain
@@ -47,7 +47,6 @@ class EventsBulkProcessor(events_publisher.EventPublisher):
 
         for ev_el in events:
             try:
-                #ev_el = rest_utils.as_json(ev_el).encode('utf-8')
                 t_el = self._transform_message(ev_el, event_tenant_id)
                 if t_el:
                     to_send_msgs.append(t_el)
@@ -66,24 +65,14 @@ class EventsBulkProcessor(events_publisher.EventPublisher):
         finally:
             self._check_if_all_messages_was_publish(num_of_msgs, sent_count)
 
-
-    def _transform_message(self, event_element, *args):
+    def _transform_message(self, event_element, event_tenant_id):
         try:
-            LOG.info('\n###### tipo {0} \nevent_element {1}, \nargs {2}\n'.format(type(event_element), event_element, args))
             msg_json = rest_utils.as_json(event_element)
-            LOG.info('\n###### tipo {0} \nmsg_json {1}, \nargs {2}\n'.format(type(msg_json), msg_json, args))
             msg_json = msg_json.encode('utf-8')
-            LOG.info('\n###### tipo {0} \nmsg_json {1}, \nargs {2}\n'.format(type(msg_json), msg_json, args))
-            
-            # TODO Validation
+
             event_envelope = envelope.Envelope.new_envelope(
-                #event=msg_json.enconde('utf-8'),
                 event=msg_json,
-                tenant_id=args[0],
-                #region=self.service_region,
-                #dimensions=self._get_dimensions(event_element,
-                #                                global_dims=args[0])
-                dimensions=None
+                tenant_id=event_tenant_id,
             )
 
             msg_payload = (super(EventsBulkProcessor, self)

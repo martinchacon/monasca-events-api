@@ -60,16 +60,16 @@ class Envelope(dict):
         return timeutils.utcnow_ts()
 
     @classmethod
-    def new_envelope(cls, event, tenant_id, region=None, dimensions=None):
-        """Creates new log envelope
+    def new_envelope(cls, event, tenant_id, region=None):
+        """Creates new event envelope
 
-        Log envelope is combined ouf of following properties
+        Event envelope is combined of of following properties
 
         * event - dict
         * creation_time - timestamp
         * meta - meta block
 
-        Example output json would like this:
+        Example output json would be like this:
 
         .. code-block:: json
 
@@ -83,22 +83,13 @@ class Envelope(dict):
                 "creation_time": 1447834886,
                 "meta": {
                   "tenantId": "e4bd29509eda473092d32aadfee3e7b1",
-                  "region": "pl"
                 }
             }
 
         :param dict event: original event element
         :param str tenant_id: tenant id to be put in meta field
-        :param str region: region to be put in meta field
-        :param dict dimensions: additional dimensions to be appended to event
-                                object dimensions
-
         """
-        if dimensions:
-            event['dimensions'].update(dimensions)
-
         event_meta = {
-            'region': region,
             'tenantId': tenant_id
         }
 
@@ -115,4 +106,3 @@ class Envelope(dict):
     @property
     def meta(self):
         return self.get('meta', None)
-

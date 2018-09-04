@@ -1,5 +1,4 @@
-# Copyright 2015 kornicameister@gmail.com
-# Copyright 2017 FUJITSU LIMITED
+# Copyright 2018 FUJITSU LIMITED
 #
 # Licensed under the Apache License, Version 2.0 (the "License"); you may
 # not use this file except in compliance with the License. You may obtain
@@ -17,10 +16,9 @@ import falcon
 from monasca_common.kafka import producer
 from monasca_common.kafka_lib.common import FailedPayloadsError
 from monasca_common.rest import utils as rest_utils
-from monasca_events_api.app.model import envelope as envel
-from oslo_log import log
-
 from monasca_events_api import conf
+from monasca_events_api.app.model import envelope as ev_envelope
+from oslo_log import log
 
 
 LOG = log.getLogger(__name__)
@@ -114,35 +112,19 @@ class EventPublisher(object):
         """
         if not self._is_message_valid(message):
             raise InvalidMessageException()
-        #msg_json = rest_utils.as_json(message)
-        #return msg_json.encode('utf-8')
+
         truncated = self._truncate(message)
         proper = self._ensure_type_bytes(truncated)
         return proper
 
-    def _create_message_for_persister_from_request_body(self, body):
-        """Create message for persister from request body
-
-        Method take original request body and them
-        transform the request to proper message format
-        acceptable by event-prsister
-        :param body: original request body
-        :return: transformed message
-        """
-        timestamp = body['timestamp']
-        final_body = []
-        for events in body['events']:
-            ev = events['event'].copy()
-            ev.update({'timestamp': timestamp})
-            final_body.append(ev)
-        return final_body
-
     def _truncate(self, envelope):
-        # TODO description
-        msg_str = envel.serialize_envelope(envelope)
+        """
+        :param Envelope envelope: original envelope
+        :return: serialized message
+        :rtype: str
+        """
+        msg_str = ev_envelope.serialize_envelope(envelope)
         return msg_str
-        
-          
 
     def _ensure_type_bytes(self, message):
         """Ensures that message will have proper type.
@@ -150,50 +132,37 @@ class EventPublisher(object):
         :param str message: instance of message
 
         """
-        return message
-        #return message.encode('utf-8')
+        return message.encode('utf-8')
 
     def _publish(self, messages):
         """Publishes messages to kafka.
-
         :param list messages: list of messages
-
         """
         num_of_msg = len(messages)
 
         LOG.debug('Publishing %d messages', num_of_msg)
 
-        success = False
-        first = True
-        while not success:
-            try:
-                for topic in self._topics:
-                    self._kafka_publisher.publish(
-                        topic,
-                        messages
-                    )
-                    success = True
-                    LOG.debug('Sent %d messages to topic %s',
-                              num_of_msg, topic)
-            except FailedPayloadsError as ex:
-                LOG.error('Failed to send messages %s', ex)
-                if first:
-                    LOG.error('Retrying')
-                    first = False
-                    continue
-                else:
-                    raise falcon.HTTPServiceUnavailable('Service unavailable',
-                                                        str(ex), 60)
-            except Exception as ex:
-                LOG.error('Failed to send messages %s', ex)
-                raise falcon.HTTPServiceUnavailable('Service unavailable',
-                                                    str(ex), 60)
-
+        try:
+            for topic in self._topics:
+                self._kafka_publisher.publish(
+                    topic,
+                    messages
+                )
+                LOG.debug('Sent %d messages to topic %s', num_of_msg, topic)
+        except Exception as ex:
+            raise falcon.HTTPServiceUnavailable('Service unavailable',
+                                                str(ex), 60)
 
     @staticmethod
     def _is_message_valid(message):
-        # TODO description
-        return message and isinstance(message, envel.Envelope)
+        """Validates message before sending.
+
+        Methods checks if message is :py:class:`model.envelope.Envelope`.
+        By being instance of this class it is ensured that all required
+        keys are found and they will have their values.
+
+        """
+        return message and isinstance(message, ev_envelope.Envelope)
 
     def _check_if_all_messages_was_publish(self, send_count, to_send_count):
         """Executed after publishing to sent metrics.
@@ -202,7 +171,6 @@ class EventPublisher(object):
         :param int to_send_count: how many messages should be sent
 
         """
-
         failed_to_send = to_send_count - send_count
 
         if failed_to_send == 0:
@@ -212,4 +180,3 @@ class EventPublisher(object):
             error_str = ('Failed to send all messages, %d '
                          'messages out of %d have not been published')
             LOG.error(error_str, failed_to_send, to_send_count)
-
