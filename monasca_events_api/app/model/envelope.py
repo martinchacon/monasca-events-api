@@ -14,7 +14,6 @@
 
 from oslo_utils import timeutils
 import six
-import json
 from monasca_common.rest import utils as rest_utils
 
 
@@ -28,7 +27,7 @@ def serialize_envelope(envelope):
     json = rest_utils.as_json(envelope, ensure_ascii=False)
 
     if six.PY2:
-        raw = unicode(json.replace(r'\\', r'\\\\'), encoding='utf-8',
+        raw = unicode(json, encoding='utf-8',
                       errors='replace')
     else:
         raw = json
@@ -51,7 +50,7 @@ class Envelope(dict):
 
         creation_time = self._get_creation_time()
         super(Envelope, self).__init__(
-            event=json.loads(event),
+            event=rest_utils.from_json(event),
             creation_time=creation_time,
             meta=meta
         )
