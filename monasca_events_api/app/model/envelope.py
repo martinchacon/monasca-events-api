@@ -14,7 +14,7 @@
 
 from oslo_utils import timeutils
 import six
-
+import json
 from monasca_common.rest import utils as rest_utils
 
 
@@ -51,7 +51,7 @@ class Envelope(dict):
 
         creation_time = self._get_creation_time()
         super(Envelope, self).__init__(
-            event=event,
+            event=json.loads(event),
             creation_time=creation_time,
             meta=meta
         )

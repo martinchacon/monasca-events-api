@@ -13,12 +13,11 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
-import six
 import falcon
 from monasca_common.kafka import producer
 from monasca_common.kafka_lib.common import FailedPayloadsError
 from monasca_common.rest import utils as rest_utils
-from monasca_events_api.app.model import envelope
+from monasca_events_api.app.model import envelope as envel
 from oslo_log import log
 
 from monasca_events_api import conf
@@ -30,27 +29,6 @@ CONF = conf.CONF
 _RETRY_AFTER = 60
 _KAFKA_META_DATA_SIZE = 32
 _TRUNCATION_SAFE_OFFSET = 1
-
-def serializarlo(envelope):
-    """Returns json representation of an envelope.
-
-    :return: json object of envelope
-    :rtype: six.text_type
-
-    """
-    LOG.info('\n------>> tipo {0} \nenvelope {1}\n'.format(type(envelope), envelope))
-    json = rest_utils.as_json(envelope, ensure_ascii=True)
-
-    LOG.info('\n------>> tipo {0} \njson {1}\n'.format(type(json), json))
-
-    if six.PY2:
-        raw = unicode(json.replace(r'\"', r'"'), encoding='utf-8',
-                      errors='replace')
-    else:
-        raw = json
-
-    LOG.info('\n------>> tipo {0} \nraw {1}\n'.format(type(raw), raw))
-    return raw
 
 
 class InvalidMessageException(Exception):
@@ -161,7 +139,7 @@ class EventPublisher(object):
 
     def _truncate(self, envelope):
         # TODO description
-        msg_str = serializarlo(envelope)
+        msg_str = envel.serialize_envelope(envelope)
         return msg_str
         
           
@@ -215,7 +193,7 @@ class EventPublisher(object):
     @staticmethod
     def _is_message_valid(message):
         # TODO description
-        return message and isinstance(message, envelope.Envelope)
+        return message and isinstance(message, envel.Envelope)
 
     def _check_if_all_messages_was_publish(self, send_count, to_send_count):
         """Executed after publishing to sent metrics.
